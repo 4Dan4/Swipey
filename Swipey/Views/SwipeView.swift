@@ -1,9 +1,9 @@
+import ComposableArchitecture
 import SwiftUI
 import UIKit
-import Observation
 
 struct SwipeView: View {
-    @Bindable var viewModel: SwipeViewModel
+    let store: StoreOf<SwipeFeature>
 
     @State private var dragOffset: CGSize = .zero
     @State private var cardOpacity: Double = 1
@@ -22,10 +22,10 @@ struct SwipeView: View {
             VStack(spacing: 16) {
                 topBar
 
-                if let currentAssetID = viewModel.currentAssetID {
+                if let currentAssetID = store.currentAssetID {
                     GeometryReader { geometry in
                         ZStack {
-                            AssetCardImageView(assetID: currentAssetID, photoManager: viewModel.photoManager)
+                            AssetCardImageView(assetID: currentAssetID)
                                 .overlay(alignment: .top) {
                                     swipeFeedbackOverlay
                                         .padding(22)
@@ -54,15 +54,18 @@ struct SwipeView: View {
             }
             .padding(.vertical, 12)
         }
-        .alert("Удалить фото?", isPresented: $viewModel.showDeleteConfirmation) {
-            Button("Отмена", role: .cancel) {}
+        .alert("Удалить фото?", isPresented: Binding(
+            get: { store.showDeleteConfirmation },
+            set: { if $0 == false { store.send(.view(.deleteConfirmationDismissed)) } }
+        )) {
+            Button("Отмена", role: .cancel) {
+                store.send(.view(.deleteConfirmationDismissed))
+            }
             Button("Удалить", role: .destructive) {
-                Task {
-                    await viewModel.deleteQueuedAssets()
-                }
+                store.send(.view(.deleteConfirmedTapped))
             }
         } message: {
-            Text("Будут удалены \(viewModel.queuedForDeletion.count) фото из галереи.")
+            Text("Будут удалены \(store.queuedForDeletion.count) фото из галереи.")
         }
     }
 
@@ -73,14 +76,14 @@ struct SwipeView: View {
                     .font(.system(size: 29, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Осталось свайпов: \(viewModel.remainingSwipes)/\(SwipeLimiter.dailyLimit)")
+                Text("Осталось свайпов: \(store.remainingSwipes)/\(SwipeLimiter.dailyLimit)")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.82))
             }
 
             Spacer()
 
-            Text("Удалено: \(viewModel.deletedCount)")
+            Text("Удалено: \(store.deletedCount)")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -111,7 +114,7 @@ struct SwipeView: View {
     private var bottomControls: some View {
         HStack(spacing: 10) {
             Button {
-                viewModel.undoLastSwipe()
+                store.send(.view(.undoTapped))
                 impact(style: .light)
             } label: {
                 Label("Отменить", systemImage: "arrow.uturn.backward")
@@ -121,25 +124,25 @@ struct SwipeView: View {
             }
             .buttonStyle(.bordered)
             .tint(.white)
-            .disabled(viewModel.canUndo == false)
+            .disabled(store.canUndo == false)
 
             Button {
-                if viewModel.queuedForDeletion.isEmpty == false {
-                    viewModel.queueDeletion()
+                if store.queuedForDeletion.isEmpty == false {
+                    store.send(.view(.queueDeletionTapped))
                 }
             } label: {
-                Label("Удалить \(viewModel.queuedForDeletion.count)", systemImage: "trash")
+                Label("Удалить \(store.queuedForDeletion.count)", systemImage: "trash")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
-            .disabled(viewModel.queuedForDeletion.isEmpty)
+            .disabled(store.queuedForDeletion.isEmpty)
 
-            if viewModel.canSwipe == false {
+            if store.canSwipe == false {
                 Button {
-                    viewModel.presentPaywall()
+                    store.send(.view(.paywallPresented))
                 } label: {
                     Image(systemName: "crown")
                         .font(.system(size: 17, weight: .bold))
@@ -186,17 +189,17 @@ struct SwipeView: View {
     private func cardGesture(cardWidth: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
-                guard viewModel.hasPhotos else { return }
+                guard store.hasPhotos else { return }
                 dragOffset = value.translation
             }
             .onEnded { value in
-                guard viewModel.hasPhotos else {
+                guard store.hasPhotos else {
                     resetCardPosition()
                     return
                 }
 
-                if viewModel.canSwipe == false {
-                    viewModel.presentPaywall()
+                if store.canSwipe == false {
+                    store.send(.view(.paywallPresented))
                     warningFeedback()
                     resetCardPosition()
                     return
@@ -228,7 +231,7 @@ struct SwipeView: View {
 
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(180))
-            viewModel.handleSwipe(direction)
+            store.send(.view(.swipeCompleted(direction)))
             dragOffset = .zero
             cardOpacity = 1
         }
