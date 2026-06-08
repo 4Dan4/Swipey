@@ -1,10 +1,15 @@
+import ComposableArchitecture
 import SwiftUI
 
 @main
 struct SwipeyApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(
+                store: Store(initialState: SwipeFeature.State()) {
+                    SwipeFeature()
+                }
+            )
         }
     }
 }

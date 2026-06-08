@@ -4,6 +4,8 @@ import UIKit
 
 @MainActor
 final class PhotoManager {
+    static let shared = PhotoManager()
+
     private(set) var authorizationStatus: PHAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     private(set) var assetIDs: [String] = []
 

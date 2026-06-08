@@ -2,7 +2,6 @@ import SwiftUI
 
 struct AssetCardImageView: View {
     let assetID: String
-    let photoManager: PhotoManager
 
     @State private var image: UIImage?
 
@@ -26,7 +25,7 @@ struct AssetCardImageView: View {
                 }
             }
             .task(id: assetID) {
-                image = await photoManager.thumbnail(
+                image = await PhotoManager.shared.thumbnail(
                     for: assetID,
                     targetSize: geometry.size
                 )

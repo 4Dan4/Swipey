@@ -1,16 +1,16 @@
 import Foundation
 
-enum SwipeDirection {
+enum SwipeDirection: Equatable {
     case left
     case right
 }
 
-struct SwipeAction {
+struct SwipeAction: Equatable {
     let assetID: String
     let direction: SwipeDirection
 }
 
-enum LibraryAccessState {
+enum LibraryAccessState: Equatable {
     case notDetermined
     case authorized
     case denied
