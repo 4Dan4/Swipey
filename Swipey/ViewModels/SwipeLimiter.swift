@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 final class SwipeLimiter {
     static let dailyLimit = 5000
+    static let shared = SwipeLimiter()
 
     private let defaults: UserDefaults
     private let usedKey = "swipey.swipesUsed"

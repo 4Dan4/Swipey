@@ -1,45 +1,46 @@
+import ComposableArchitecture
 import SwiftUI
 import UIKit
-import Observation
 
 struct ContentView: View {
-    @State private var viewModel = SwipeViewModel()
+    let store: StoreOf<SwipeFeature>
 
     var body: some View {
-        @Bindable var bindableViewModel = viewModel
-
         Group {
-            if viewModel.isLoading {
+            if store.isLoading {
                 loadingView
             } else {
-                switch viewModel.accessState {
+                switch store.accessState {
                 case .authorized:
-                    SwipeView(viewModel: bindableViewModel)
+                    SwipeView(store: store)
                 case .notDetermined:
                     loadingView
                 case .denied:
                     PermissionDeniedView(
                         onOpenSettings: openSettings,
-                        onRetry: viewModel.refreshAfterSettings
+                        onRetry: { store.send(.view(.retryAfterSettingsTapped)) }
                     )
                 }
             }
         }
         .task {
-            await viewModel.bootstrap()
+            await store.send(.view(.task)).finish()
         }
-        .fullScreenCover(isPresented: $bindableViewModel.isPaywallPresented) {
+        .fullScreenCover(isPresented: Binding(
+            get: { store.isPaywallPresented },
+            set: { if $0 == false { store.send(.view(.paywallDismissed)) } }
+        )) {
             PaywallView {
-                bindableViewModel.isPaywallPresented = false
+                store.send(.view(.paywallDismissed))
             }
         }
         .alert("Ошибка", isPresented: Binding(
-            get: { viewModel.errorMessage != nil },
-            set: { if $0 == false { viewModel.clearError() } }
+            get: { store.errorMessage != nil },
+            set: { if $0 == false { store.send(.view(.errorDismissed)) } }
         )) {
-            Button("OK", role: .cancel) { viewModel.clearError() }
+            Button("OK", role: .cancel) { store.send(.view(.errorDismissed)) }
         } message: {
-            Text(viewModel.errorMessage ?? "")
+            Text(store.errorMessage ?? "")
         }
     }
 
@@ -66,5 +67,9 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(
+        store: Store(initialState: SwipeFeature.State()) {
+            SwipeFeature()
+        }
+    )
 }
