@@ -147,22 +147,7 @@ struct SwipeFeature: Reducer {
                 return .none
 
             case .view(.deleteConfirmedTapped):
-                guard !state.queuedForDeletion.isEmpty else { return .none }
-
-                let ids = state.queuedForDeletion
-                let deleteSet = Set(ids)
-                let removedBeforeCurrent = state.assets[..<min(state.currentIndex, state.assets.count)]
-                    .filter { deleteSet.contains($0.id) }
-                    .count
-
-                return .run { send in
-                    do {
-                        try await photoLibraryClient.deleteAssets(ids)
-                        await send(.deleteQueuedAssetsResponse(.success(DeleteResult(ids: ids, removedBeforeCurrent: removedBeforeCurrent))))
-                    } catch {
-                        await send(.deleteQueuedAssetsResponse(.failure(error)))
-                    }
-                }
+                return .none
 
             case .view(.deleteConfirmationDismissed):
                 state.showDeleteConfirmation = false

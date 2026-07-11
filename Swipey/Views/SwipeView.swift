@@ -62,7 +62,32 @@ struct SwipeView: View {
                 store.send(.view(.deleteConfirmationDismissed))
             }
             Button("Удалить", role: .destructive) {
-                store.send(.view(.deleteConfirmedTapped))
+                let ids = store.queuedForDeletion
+                let deleteSet = Set(ids)
+                let removedBeforeCurrent = store.assets[..<min(store.currentIndex, store.assets.count)]
+                    .filter { deleteSet.contains($0.id) }
+                    .count
+
+                Task {
+                    do {
+                        try await PhotoManager.shared.deleteAssets(with: ids)
+                        await MainActor.run {
+                            PhotoManager.shared.removeAssets(withIDs: deleteSet)
+                        }
+                        store.send(
+                            .deleteQueuedAssetsResponse(
+                                .success(
+                                    SwipeFeature.DeleteResult(
+                                        ids: ids,
+                                        removedBeforeCurrent: removedBeforeCurrent
+                                    )
+                                )
+                            )
+                        )
+                    } catch {
+                        store.send(.deleteQueuedAssetsResponse(.failure(error)))
+                    }
+                }
             }
         } message: {
             Text("Будут удалены \(store.queuedForDeletion.count) медиафайлов из галереи.")
