@@ -6,7 +6,7 @@ struct SwipeFeature: Reducer {
     struct State: Equatable {
         var isLoading = true
         var currentIndex = 0
-        var assetIDs: [String] = []
+        var assets: [MediaAsset] = []
         var queuedForDeletion: [String] = []
         var deletedCount = 0
         var accessState: LibraryAccessState = .notDetermined
@@ -17,21 +17,21 @@ struct SwipeFeature: Reducer {
         var didBootstrap = false
         var remainingSwipes = SwipeLimiter.dailyLimit
 
-        var currentAssetID: String? {
-            guard currentIndex < assetIDs.count else { return nil }
-            return assetIDs[currentIndex]
+        var currentAsset: MediaAsset? {
+            guard currentIndex < assets.count else { return nil }
+            return assets[currentIndex]
         }
 
-        var hasPhotos: Bool {
-            currentAssetID != nil
+        var hasAssets: Bool {
+            currentAsset != nil
         }
 
         var canSwipe: Bool {
             remainingSwipes > 0
         }
 
-        var totalPhotosCount: Int {
-            assetIDs.count
+        var totalAssetsCount: Int {
+            assets.count
         }
 
         var canUndo: Bool {
@@ -41,8 +41,8 @@ struct SwipeFeature: Reducer {
 
     enum Action {
         case view(View)
-        case bootstrapResponse(LibraryAccessState, [String], Int)
-        case authorizationRefreshed(LibraryAccessState, [String], Int)
+        case bootstrapResponse(LibraryAccessState, [MediaAsset], Int)
+        case authorizationRefreshed(LibraryAccessState, [MediaAsset], Int)
         case swipeProcessed(assetID: String, direction: SwipeDirection, consumed: Bool, remaining: Int)
         case deleteQueuedAssetsResponse(Result<DeleteResult, any Error>)
     }
@@ -79,36 +79,48 @@ struct SwipeFeature: Reducer {
                 state.isLoading = true
                 return .run { send in
                     let accessState = await photoLibraryClient.requestAccessIfNeeded()
-                    let assetIDs = accessState == .authorized
-                        ? await photoLibraryClient.loadPhotos()
-                        : []
+                    let isAuthorized: Bool
+                    switch accessState {
+                    case .authorized:
+                        isAuthorized = true
+                    case .notDetermined, .denied:
+                        isAuthorized = false
+                    }
+
+                    let assets = isAuthorized ? await photoLibraryClient.loadAssets() : []
                     let remaining = await swipeLimiterClient.remaining()
 
-                    if accessState == .authorized {
+                    if isAuthorized {
                         await photoLibraryClient.preheatThumbnails(0, preheatSize, 10)
                     }
 
-                    await send(.bootstrapResponse(accessState, assetIDs, remaining))
+                    await send(.bootstrapResponse(accessState, assets, remaining))
                 }
 
             case .view(.retryAfterSettingsTapped):
                 state.isLoading = true
                 return .run { send in
                     let accessState = await photoLibraryClient.refreshAuthorizationStatus()
-                    let assetIDs = accessState == .authorized
-                        ? await photoLibraryClient.loadPhotos()
-                        : []
+                    let isAuthorized: Bool
+                    switch accessState {
+                    case .authorized:
+                        isAuthorized = true
+                    case .notDetermined, .denied:
+                        isAuthorized = false
+                    }
+
+                    let assets = isAuthorized ? await photoLibraryClient.loadAssets() : []
                     let remaining = await swipeLimiterClient.remaining()
 
-                    if accessState == .authorized {
+                    if isAuthorized {
                         await photoLibraryClient.preheatThumbnails(0, preheatSize, 10)
                     }
 
-                    await send(.authorizationRefreshed(accessState, assetIDs, remaining))
+                    await send(.authorizationRefreshed(accessState, assets, remaining))
                 }
 
             case .view(.swipeCompleted(let direction)):
-                guard let currentAssetID = state.currentAssetID else { return .none }
+                guard let currentAssetID = state.currentAsset?.id else { return .none }
                 guard state.canSwipe else {
                     state.isPaywallPresented = true
                     return .none
@@ -136,12 +148,11 @@ struct SwipeFeature: Reducer {
 
             case .view(.deleteConfirmedTapped):
                 guard !state.queuedForDeletion.isEmpty else { return .none }
-                state.showDeleteConfirmation = false
 
                 let ids = state.queuedForDeletion
                 let deleteSet = Set(ids)
-                let removedBeforeCurrent = state.assetIDs[..<min(state.currentIndex, state.assetIDs.count)]
-                    .filter { deleteSet.contains($0) }
+                let removedBeforeCurrent = state.assets[..<min(state.currentIndex, state.assets.count)]
+                    .filter { deleteSet.contains($0.id) }
                     .count
 
                 return .run { send in
@@ -169,11 +180,11 @@ struct SwipeFeature: Reducer {
                 state.errorMessage = nil
                 return .none
 
-            case .bootstrapResponse(let accessState, let assetIDs, let remaining),
-                 .authorizationRefreshed(let accessState, let assetIDs, let remaining):
+            case .bootstrapResponse(let accessState, let assets, let remaining),
+                 .authorizationRefreshed(let accessState, let assets, let remaining):
                 state.isLoading = false
                 state.accessState = accessState
-                state.assetIDs = assetIDs
+                state.assets = assets
                 state.remainingSwipes = remaining
                 state.currentIndex = 0
                 state.queuedForDeletion = []
@@ -198,24 +209,24 @@ struct SwipeFeature: Reducer {
                     state.isPaywallPresented = true
                 }
 
-                return .run { [currentIndex = state.currentIndex, hasPhotos = state.hasPhotos] _ in
-                    guard hasPhotos else { return }
+                return .run { [currentIndex = state.currentIndex, hasAssets = state.hasAssets] _ in
+                    guard hasAssets else { return }
                     await photoLibraryClient.preheatThumbnails(currentIndex, preheatSize, 10)
                 }
 
             case .deleteQueuedAssetsResponse(.success(let result)):
-                state.assetIDs.removeAll { result.ids.contains($0) }
+                state.assets.removeAll { result.ids.contains($0.id) }
                 state.currentIndex = max(0, state.currentIndex - result.removedBeforeCurrent)
                 state.queuedForDeletion = []
                 state.swipeHistory.removeAll { result.ids.contains($0.assetID) }
                 state.deletedCount += result.ids.count
-                return .run { [currentIndex = state.currentIndex, hasPhotos = state.hasPhotos] _ in
-                    guard hasPhotos else { return }
+                return .run { [currentIndex = state.currentIndex, hasAssets = state.hasAssets] _ in
+                    guard hasAssets else { return }
                     await photoLibraryClient.preheatThumbnails(currentIndex, preheatSize, 10)
                 }
 
             case .deleteQueuedAssetsResponse(.failure):
-                state.errorMessage = "Не удалось удалить фото. Проверьте доступ к галерее и попробуйте ещё раз."
+                state.errorMessage = "Не удалось удалить медиафайлы. Проверьте доступ к галерее и попробуйте ещё раз."
                 return .none
             }
         }

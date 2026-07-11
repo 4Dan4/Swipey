@@ -22,10 +22,10 @@ struct SwipeView: View {
             VStack(spacing: 16) {
                 topBar
 
-                if let currentAssetID = store.currentAssetID {
+                if let currentAsset = store.currentAsset {
                     GeometryReader { geometry in
                         ZStack {
-                            AssetCardImageView(assetID: currentAssetID)
+                            AssetCardMediaView(asset: currentAsset)
                                 .overlay(alignment: .top) {
                                     swipeFeedbackOverlay
                                         .padding(22)
@@ -54,7 +54,7 @@ struct SwipeView: View {
             }
             .padding(.vertical, 12)
         }
-        .alert("Удалить фото?", isPresented: Binding(
+        .alert("Удалить медиафайлы?", isPresented: Binding(
             get: { store.showDeleteConfirmation },
             set: { if $0 == false { store.send(.view(.deleteConfirmationDismissed)) } }
         )) {
@@ -65,7 +65,7 @@ struct SwipeView: View {
                 store.send(.view(.deleteConfirmedTapped))
             }
         } message: {
-            Text("Будут удалены \(store.queuedForDeletion.count) фото из галереи.")
+            Text("Будут удалены \(store.queuedForDeletion.count) медиафайлов из галереи.")
         }
     }
 
@@ -99,11 +99,11 @@ struct SwipeView: View {
                 .font(.system(size: 52, weight: .semibold))
                 .foregroundStyle(.green)
 
-            Text("Фотографии закончились")
+            Text("Медиафайлы закончились")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            Text("Вы обработали все доступные фото. Можно удалить отмеченные или зайти позже.")
+            Text("Вы обработали все доступные фото и видео. Можно удалить отмеченные или зайти позже.")
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.8))
@@ -189,11 +189,11 @@ struct SwipeView: View {
     private func cardGesture(cardWidth: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
-                guard store.hasPhotos else { return }
+                guard store.hasAssets else { return }
                 dragOffset = value.translation
             }
             .onEnded { value in
-                guard store.hasPhotos else {
+                guard store.hasAssets else {
                     resetCardPosition()
                     return
                 }
