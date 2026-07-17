@@ -6,7 +6,7 @@ import UIKit
 struct PhotoLibraryClient: Sendable {
     var requestAccessIfNeeded: @Sendable () async -> LibraryAccessState = { .notDetermined }
     var refreshAuthorizationStatus: @Sendable () async -> LibraryAccessState = { .notDetermined }
-    var loadPhotos: @Sendable () async -> [String] = { [] }
+    var loadAssets: @Sendable () async -> [MediaAsset] = { [] }
     var preheatThumbnails: @Sendable (_ index: Int, _ targetSize: CGSize, _ window: Int) async -> Void = { _, _, _ in }
     var deleteAssets: @Sendable (_ ids: [String]) async throws -> Void
     var thumbnail: @Sendable (_ assetID: String, _ targetSize: CGSize) async -> UIImage? = { _, _ in nil }
@@ -29,11 +29,11 @@ extension PhotoLibraryClient: DependencyKey {
                 return manager.accessState
             }
         },
-        loadPhotos: {
+        loadAssets: {
             let manager = await MainActor.run { PhotoManager.shared }
             return await MainActor.run {
-                manager.loadPhotos()
-                return manager.assetIDs
+                manager.loadAssets()
+                return manager.assets
             }
         },
         preheatThumbnails: { index, targetSize, window in

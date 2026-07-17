@@ -6,13 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXFileReference section */
-		E6EB3CAD2F8FFE1E00FA9B6F /* Swipey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swipey.app; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
-
 /* Begin PBXBuildFile section */
 		A1B2C3D42F00000100AAA001 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D42F00000200AAA001 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		E6EB3CAD2F8FFE1E00FA9B6F /* Swipey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swipey.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E6EB3CAF2F8FFE1E00FA9B6F /* Swipey */ = {
@@ -132,25 +132,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		A1B2C3D42F00000300AAA001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		A1B2C3D42F00000200AAA001 /* ComposableArchitecture */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A1B2C3D42F00000300AAA001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
-			productName = ComposableArchitecture;
-		};
-/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E6EB3CB62F8FFE1F00FA9B6F /* Debug */ = {
@@ -364,6 +345,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D42F00000300AAA001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D42F00000200AAA001 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D42F00000300AAA001 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E6EB3CA52F8FFE1E00FA9B6F /* Project object */;
 }
